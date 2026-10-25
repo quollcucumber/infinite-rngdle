@@ -1,0 +1,1 @@
+{"name":"infinite-rngdle","private":true,"type":"module","scripts":{"calibrate":"node scripts/calibrate.mjs","start":"python3 -m http.server 8080"}}

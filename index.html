@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Infinite RNGdle</title>
+  <meta name="description" content="RNGdle with no daily limit. Roll a number from 0 to 1,000,000 as many times as you like and collect badges." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <h1>Infinite <span>RNGdle</span></h1>
+    <p class="tag">One number from 0 to 1,000,000. No daily limit.</p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <main>
+    <section class="roller card">
+      <div class="tiles" id="tiles"></div>
+      <div class="verdict" id="verdict">
+        <div class="tier" id="tier">Ready</div>
+        <div class="sub" id="sub">Press ROLL or hit Space</div>
+        <div class="ep"><span id="ep">0</span> EP</div>
+      </div>
+      <div class="controls">
+        <button id="roll" class="roll">ROLL</button>
+        <button id="share" class="ghost" disabled>Copy result</button>
+      </div>
+      <div class="options">
+        <label><input type="checkbox" id="fast" /> Fast reveal</label>
+        <span class="sep"></span>
+        <label>Auto-roll until
+          <select id="autoTarget"></select>
+        </label>
+        <button id="auto" class="ghost small">Start</button>
+        <span id="autoStatus" class="muted"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 id="breakdownTitle">Badges</h2>
+      <ul class="badges" id="badges"><li class="empty">Roll to see which badges your number earns.</li></ul>
+    </section>
+
+    <section class="card">
+      <nav class="tabs" id="tabs">
+        <button data-tab="history" class="active">History</button>
+        <button data-tab="best">Best rolls</button>
+        <button data-tab="collection">Collection</button>
+        <button data-tab="check">Check a number</button>
+        <button data-tab="about">How it works</button>
+      </nav>
+      <div class="tab" id="tab-history"></div>
+      <div class="tab hidden" id="tab-best"></div>
+      <div class="tab hidden" id="tab-collection"></div>
+      <div class="tab hidden" id="tab-check">
+        <form id="checkForm" class="check">
+          <input id="checkInput" type="number" min="0" max="1000000" placeholder="e.g. 314159" required />
+          <button class="ghost">Analyse</button>
+        </form>
+        <p class="muted">Shows the badges and rarity for any number. Doesn't count towards your stats.</p>
+      </div>
+      <div class="tab hidden" id="tab-about">
+        <p>Every roll picks a uniformly random whole number from 0 to 1,000,000 using your browser's cryptographic RNG. Your number is scanned for patterns and each badge it matches is worth <b>EP</b> (entropy points).</p>
+        <p>A badge's EP comes from how many of the 1,000,001 possible numbers earn it: <code>EP = 10 × (1,000,001 ÷ count)<sup>0.3</sup></code>, so a badge half of all numbers get is worth 12 EP and a one-in-a-million badge is worth 631 EP. Badges in the same family (e.g. Prime → Twin Prime) only score their best member; the others are shown struck through.</p>
+        <p>Your roll's rarity compares its total EP against every possible number:</p>
+        <ul class="tierlist" id="tierList"></ul>
+        <p>Everything is stored locally in this browser. <button id="reset" class="ghost small danger">Reset all stats</button></p>
+      </div>
+    </section>
+  </main>
+  <footer>Inspired by <a href="https://www.rngdle.com/" target="_blank" rel="noopener">RNGdle</a>. Unofficial, unlimited fan version.</footer>
+  <div id="fx"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
