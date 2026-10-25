@@ -1,5 +1,5 @@
-import { BADGES, MAX, TOTAL, analyze, applyCounts } from './badges.js?v=3';
-import { BADGE_COUNTS, EP_HISTOGRAM } from './calibration.js?v=3';
+import { BADGES, MAX, TOTAL, analyze, applyCounts } from './badges.js?v=4';
+import { BADGE_COUNTS, EP_HISTOGRAM } from './calibration.js?v=4';
 
 applyCounts(BADGE_COUNTS);
 
@@ -251,7 +251,9 @@ function shareText() {
   const { r, label } = current;
   const tier = TIER_BY_ID[r.tier];
   const top = r.badges.filter((x) => x.counted).slice(0, 5).map(({ badge }) => `${badge.icon} ${badge.name}`).join('\n');
-  return `Infinite RNGdle ${label}\n🎲 ${fmt(r.n)} — ${tier.icon} ${tier.name} (${r.tier === 'trash' ? 'Bottom' : 'Top'} ${pct(r.tier === 'trash' ? r.bottom : r.top)})\n${fmt(r.total)} EP · ${r.badges.length} badges\n${top}`;
+  const link = `${location.origin}${location.pathname}?n=${r.n}`;
+  const title = label.startsWith('Roll #') ? `Infinite RNGdle ${label.replace(' (replay)', '')}` : 'Infinite RNGdle';
+  return `${title}\n🎲 ${fmt(r.n)} — ${tier.icon} ${tier.name} (${r.tier === 'trash' ? 'Bottom' : 'Top'} ${pct(r.tier === 'trash' ? r.bottom : r.top)})\n${fmt(r.total)} EP · ${r.badges.length} badges\n${top}\n${link}`;
 }
 
 let autoTimer = null;
@@ -333,6 +335,8 @@ function init() {
   buildTiles(0, false);
   for (const el of $('tiles').children) { el.textContent = '?'; el.classList.remove('lead'); }
   renderStats(); renderHistory(); renderBest(); renderCollection();
+  const shared = new URLSearchParams(location.search).get('n');
+  if (shared !== null && /^\d+$/.test(shared) && Number(shared) <= MAX) showResult(scoreRoll(Number(shared)), 'Shared roll (not counted)', null, false);
 }
 
 init();
