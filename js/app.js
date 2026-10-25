@@ -1,5 +1,5 @@
-import { BADGES, MAX, TOTAL, analyze, applyCounts } from './badges.js?v=5';
-import { BADGE_COUNTS, EP_HISTOGRAM } from './calibration.js?v=5';
+import { BADGES, MAX, TOTAL, analyze, applyCounts } from './badges.js?v=6';
+import { BADGE_COUNTS, EP_HISTOGRAM } from './calibration.js?v=6';
 
 applyCounts(BADGE_COUNTS);
 
@@ -44,17 +44,17 @@ function randomRoll() {
   return buf[0] % TOTAL;
 }
 
-const STORE_KEY = 'infinite-rngdle-v2';
-const OLD_STORE_KEY = 'infinite-rngdle-v1';
+const STORE_KEY = 'infinite-rngdle-v3';
+const OLD_STORE_KEYS = ['infinite-rngdle-v2', 'infinite-rngdle-v1'];
 const fresh = () => ({ rolls: 0, lifetimeEp: 0, found: {}, tiers: {}, history: [], best: [], fast: false });
 let state = fresh();
 try {
   const saved = localStorage.getItem(STORE_KEY);
   if (saved) state = { ...fresh(), ...JSON.parse(saved) };
   else {
-    // v1 used a different EP scale; keep only the badge collection and settings.
-    const old = JSON.parse(localStorage.getItem(OLD_STORE_KEY) || '{}');
-    state = { ...fresh(), found: old.found || {}, fast: !!old.fast };
+    // Older versions used a different badge set; keep only settings.
+    const old = OLD_STORE_KEYS.map((k) => localStorage.getItem(k)).find(Boolean);
+    state = { ...fresh(), fast: !!JSON.parse(old || '{}').fast };
   }
 } catch { /* corrupt storage: start fresh */ }
 const save = () => localStorage.setItem(STORE_KEY, JSON.stringify(state));

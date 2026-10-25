@@ -1,220 +1,445 @@
+// Badge definitions ported from RNGdle (rngdle.com) so every number earns the same badges and EP as the original.
 export const MAX = 1_000_000;
 export const TOTAL = MAX + 1;
 
-const PRIME_LIM = 2 * MAX + 10;
-const composite = new Uint8Array(PRIME_LIM + 1);
-composite[0] = composite[1] = 1;
-for (let i = 2; i * i <= PRIME_LIM; i++) {
-  if (!composite[i]) for (let j = i * i; j <= PRIME_LIM; j += i) composite[j] = 1;
+const digitSum = (s) => [...s].reduce((a, x) => a + Number(x), 0);
+const sumDigits = (n) => digitSum(String(n));
+const productDigits = (n) => (n === 0 ? 0 : [...String(n)].reduce((a, x) => a * Number(x), 1));
+const diffs = (s) => [...s].slice(1).map((x, i) => x - s[i]);
+const distinct = (c) => c.filter((k) => k > 0).length;
+const isPalindrome = (s) => s === [...s].reverse().join('');
+const ROTATED = { 0: '0', 1: '1', 6: '9', 8: '8', 9: '6' };
+const FACTORIALS = new Set([1, 2, 6, 24, 120, 720, 5040, 40320, 362880]);
+
+function isPrime(n) {
+  if (n < 2) return false;
+  for (let d = 2; d * d <= n; d++) if (n % d === 0) return false;
+  return true;
 }
-const isPrime = (x) => x >= 0 && x <= PRIME_LIM && !composite[x];
-
-const spf = new Int32Array(MAX + 1);
-for (let i = 2; i <= MAX; i++) {
-  if (spf[i] === 0) for (let j = i; j <= MAX; j += i) if (spf[j] === 0) spf[j] = i;
+const isSquare = (x) => x >= 0 && Number.isInteger(Math.sqrt(x));
+const isCube = (x) => Math.round(Math.cbrt(x)) ** 3 === x;
+// Same floating-point test RNGdle uses, so edge cases agree.
+const isPerfectPower = (x, k) => x === 0 || x === 1 || Math.round(x ** (1 / k)) ** k === x;
+const isPronic = (x) => Number.isInteger((Math.sqrt(1 + 4 * x) - 1) / 2);
+function isPowerOf(x, b) {
+  if (x <= 0) return false;
+  let p = 1;
+  while (p < x) p *= b;
+  return p === x;
 }
 
-const setOf = (gen) => new Set(gen);
-const FIB = setOf((function* () { let a = 0, b = 1; while (a <= MAX) { yield a; [a, b] = [b, a + b]; } })());
-const FACT = setOf((function* () { let f = 1; for (let i = 1; f <= MAX; i++) { yield f; f *= i + 1; } })());
-const CATALAN = setOf((function* () { let c = 1; for (let i = 0; c <= MAX; i++) { yield c; c = (c * 2 * (2 * i + 1)) / (i + 2); } })());
-const TAXICAB = (() => {
-  const seen = new Map();
-  for (let a = 1; a ** 3 <= MAX; a++) for (let b = a; a ** 3 + b ** 3 <= MAX; b++) {
-    const s = a ** 3 + b ** 3;
-    seen.set(s, (seen.get(s) || 0) + 1);
-  }
-  return new Set([...seen].filter(([, c]) => c >= 2).map(([s]) => s));
-})();
-const HEX_WORDS = new Set(['ACE', 'ADD', 'BAD', 'BED', 'CAB', 'DAD', 'FAB', 'FED', 'ABBA', 'BABE', 'BEAD', 'BEEF', 'CAFE', 'C0DE', 'DEAD', 'DEAF', 'FACE', 'FADE', 'FEED', 'F00D', 'ADDED', 'DECAF'].map((w) => parseInt(w, 16)));
-const DAYS_IN_MONTH = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-function isSquare(x) { const r = Math.round(Math.sqrt(x)); return r * r === x; }
-function isCube(x) { const r = Math.round(Math.cbrt(x)); return r * r * r === x; }
-
-function kaprekar(n) {
-  if (n === 1) return true;
-  const sq = n * n;
-  for (let m = 10; m <= sq; m *= 10) {
-    const b = sq % m;
-    if (b > 0 && Math.floor(sq / m) + b === n) return true;
+// A run of k digits that each step by +1, or each step by -1.
+function hasRun(s, k) {
+  for (let i = 0; i + k <= s.length; i++) {
+    const step = s[i + 1] - s[i];
+    if (step !== 1 && step !== -1) continue;
+    let ok = true;
+    for (let j = 2; j < k && ok; j++) ok = s[i + j] - s[i + j - 1] === step;
+    if (ok) return true;
   }
   return false;
 }
+function isScrambledRun(s) {
+  if (s.length < 2) return false;
+  const d = [...s].map(Number).sort((a, b) => a - b);
+  return d.every((x, i) => i === 0 || x === d[i - 1] + 1);
+}
+function hasScrambledRun(s) {
+  for (let len = 3; len <= s.length; len++)
+    for (let i = 0; i + len <= s.length; i++) if (isScrambledRun(s.slice(i, i + len))) return true;
+  return false;
+}
+function hasPalindromeOf(s, min) {
+  for (let len = min; len <= s.length; len++)
+    for (let i = 0; i + len <= s.length; i++) if (isPalindrome(s.slice(i, i + len))) return true;
+  return false;
+}
+function hasRepeatedSubstring(s) {
+  for (let len = 2; len <= s.length / 2; len++)
+    for (let i = 0; i + len <= s.length; i++) if (s.indexOf(s.slice(i, i + len), i + len) !== -1) return true;
+  return false;
+}
 
-export function context(n) {
-  const s = String(n);
-  const len = s.length;
-  const d = new Array(len);
-  const cnt = new Array(10).fill(0);
-  let dsum = 0;
-  for (let i = 0; i < len; i++) { d[i] = s.charCodeAt(i) - 48; cnt[d[i]]++; dsum += d[i]; }
-  const rs = s.split('').reverse().join('');
-  let maxRun = 1, run = 1;
-  for (let i = 1; i < len; i++) { run = d[i] === d[i - 1] ? run + 1 : 1; if (run > maxRun) maxRun = run; }
-  const factors = [];
-  let omega = 0, ndiv = n >= 1 ? 1 : 0, sigma = n >= 1 ? 1 : 0;
-  for (let x = n; x > 1;) {
-    const p = spf[x];
-    let e = 0, pk = 1;
-    while (x % p === 0) { x /= p; e++; pk *= p; }
-    factors.push([p, e]);
-    omega += e; ndiv *= e + 1; sigma *= (pk * p - 1) / (p - 1);
+// Mountain (dir 1): strictly up to the first peak, then strictly down. Valley (dir -1) is the mirror.
+function peak(s, dir) {
+  const d = diffs(s).map((x) => x * dir);
+  const top = d.findIndex((x, i) => i + 1 < d.length && x > 0 && d[i + 1] < 0);
+  if (s.length < 3 || top === -1) return false;
+  return d.every((x, i) => (i <= top ? x > 0 : x < 0));
+}
+function riseThenFall(d) {
+  let rose = false, fell = false;
+  for (const x of d) {
+    if (x > 0) { if (fell) return false; rose = true; }
+    else if (x < 0) fell = true;
   }
-  const hand = cnt.filter((c) => c > 0).sort((a, b) => b - a).join('');
-  return { n, s, len, d, cnt, dsum, rs, rev: Number(rs), pal: len >= 2 && s === rs, maxRun, factors, omega, ndiv, sigma, hand, prime: isPrime(n) };
+  return rose && fell;
+}
+const zigzag = (d) => d.every((x, i) => x !== 0 && (i === 0 || x * d[i - 1] < 0));
+function zigzagFlat(s) {
+  const t = s.replace(/(\d)\1+/g, '$1');
+  return t.length >= 4 && zigzag(diffs(t));
+}
+function hopscotch(s, c) {
+  if (s.length < 3 || distinct(c) < 2) return false;
+  for (let i = 0; i + 2 < s.length; i++) {
+    if (s[i + 2] !== s[i]) continue;
+    if (s[i + 4] === s[i] || s[i - 2] === s[i]) continue;
+    return true;
+  }
+  return false;
+}
+function contiguousThreePair(s, c) {
+  const starts = [];
+  for (let d = 0; d <= 9; d++) if (c[d] === 2) { const i = s.indexOf(`${d}${d}`); if (i !== -1) starts.push(i); }
+  starts.sort((a, b) => a - b);
+  return starts.some((x, i) => starts[i + 1] === x + 2 && starts[i + 2] === x + 4);
+}
+// Maximal blocks of one repeated digit, e.g. 1223334 -> [1][22][333][4].
+function blocks(s) {
+  const out = [];
+  for (let i = 0; i < s.length;) {
+    let j = i;
+    while (s[j + 1] === s[i]) j++;
+    out.push({ d: s[i], start: i, end: j, len: j - i + 1 });
+    i = j + 1;
+  }
+  return out;
+}
+function contiguousBoat(s, c) {
+  if (!c.some((k) => k >= 3) || c.filter((k) => k >= 2).length < 2) return false;
+  const b = blocks(s);
+  return b.some((x, i) => x.len >= 3 && [b[i - 1], b[i + 1]].some((y) => y && y.len >= 2 && c[y.d] >= 2));
 }
 
-const steps = (c, k) => c.len >= 3 && c.d.every((x, i) => i === 0 || x - c.d[i - 1] === k);
-const monotone = (c, sgn) => c.len >= 3 && c.d.every((x, i) => i === 0 || (x - c.d[i - 1]) * sgn > 0);
-const digitsIn = (c, ok) => c.len >= 2 && c.d.every(ok);
-const has = (c, sub) => c.s.includes(sub);
-const starts = (c, sub) => c.s.startsWith(sub);
-
-function validDate(c) {
-  if (c.len !== 6) return false;
-  const dd = c.d[0] * 10 + c.d[1], mm = c.d[2] * 10 + c.d[3], yy = c.d[4] * 10 + c.d[5];
-  if (mm < 1 || mm > 12 || dd < 1 || dd > DAYS_IN_MONTH[mm]) return false;
-  return !(mm === 2 && dd === 29 && yy % 4 !== 0);
+const leadingZero = (p) => p.length > 1 && p[0] === '0';
+const anyMultiDigit = (parts) => parts.some((p) => p.length >= 2);
+const isConsecutiveSet = (nums) => [...nums].sort((a, b) => a - b).every((x, i, a) => i === 0 || x === a[i - 1] + 1);
+function isMonotonic(nums) {
+  if (!nums) return null;
+  return nums.every((x, i) => i === 0 || x > nums[i - 1]) || nums.every((x, i) => i === 0 || x < nums[i - 1]);
 }
-function validTime(c) {
-  if (c.len !== 6) return false;
-  return c.d[0] * 10 + c.d[1] < 24 && c.d[2] < 6 && c.d[4] < 6;
+// First way (shortest leading pieces first) to cut s into k pieces without leading zeros that satisfies ok().
+function findSplit(s, k, ok) {
+  const nums = [];
+  const go = (from, left) => {
+    if (left === 1) {
+      const p = s.slice(from);
+      if (leadingZero(p)) return false;
+      nums.push(Number(p));
+      if (ok(nums)) return true;
+      nums.pop();
+      return false;
+    }
+    for (let to = from + 1; to <= s.length - (left - 1); to++) {
+      const p = s.slice(from, to);
+      if (leadingZero(p)) continue;
+      nums.push(Number(p));
+      if (go(to, left - 1)) return true;
+      nums.pop();
+    }
+    return false;
+  };
+  return go(0, k) ? [...nums] : null;
+}
+const wholeConsecutiveSplit = (s, k) => (k < s.length ? findSplit(s, k, isConsecutiveSet) : null);
+const isArithmetic = (a) => Math.abs(a[1] - a[0]) > 1 && a.every((x, i) => i < 2 || x - a[i - 1] === a[1] - a[0]);
+const isGeometric = (a) => a.every((x) => x > 0) && a[0] !== a[1] && a.every((x, i) => i < 2 || a[i - 1] * a[i - 1] === a[i - 2] * x);
+function hasProgressionSplit(s, ok) {
+  for (let k = 3; k <= s.length; k++) if (findSplit(s, k, ok)) return true;
+  return false;
+}
+const hasEquation = (s) => findSplit(s, 3, ([a, b, r]) => a !== 0 && b !== 0 && r !== 0 && (a + b === r || a - b === r || a * b === r || a / b === r)) !== null;
+
+// Two substrings next to each other (not the whole number) that are consecutive integers, e.g. 1[78][79]2.
+function consecutivePairInside(s) {
+  for (let i = 0; i < s.length; i++)
+    for (let len = 1; i + len < s.length; len++) {
+      const p = s.slice(i, i + len);
+      if (leadingZero(p)) continue;
+      for (const q of [Number(p) + 1, Number(p) - 1]) {
+        if (q < 0) continue;
+        const qs = String(q), end = i + len + qs.length;
+        if (end > s.length || s.slice(i + len, end) !== qs || !anyMultiDigit([p, qs])) continue;
+        if (i === 0 && end === s.length) continue;
+        return true;
+      }
+    }
+  return false;
+}
+// k consecutive integers written back to back, counting up or down, starting at `from`.
+function chainAt(s, from, k) {
+  for (let len = 1; len <= s.length - from - (k - 1); len++) {
+    const first = s.slice(from, from + len);
+    if (leadingZero(first)) continue;
+    for (const step of [1, -1]) {
+      const parts = [first];
+      let pos = from + len;
+      for (let j = 1; j < k; j++) {
+        const v = Number(first) + j * step;
+        const vs = String(v);
+        if (v < 0 || s.slice(pos, pos + vs.length) !== vs) break;
+        parts.push(vs);
+        pos += vs.length;
+      }
+      if (parts.length === k && anyMultiDigit(parts)) return { end: pos };
+    }
+  }
+  return null;
+}
+function consecutiveRunInside(s, k) {
+  for (let i = 0; i < s.length; i++) {
+    const r = chainAt(s, i, k);
+    if (r && !(i === 0 && r.end === s.length)) return true;
+  }
+  return false;
+}
+// Two separated (non-touching) substrings that are consecutive integers.
+function consecutivePairApart(s) {
+  const subs = [];
+  for (let i = 0; i < s.length; i++)
+    for (let j = i + 1; j <= s.length; j++) {
+      const p = s.slice(i, j);
+      if (!leadingZero(p)) subs.push({ v: Number(p), i, j, multi: p.length >= 2 });
+    }
+  return subs.some((a, x) => subs.some((b, y) => y > x && Math.abs(a.v - b.v) === 1 && (a.multi || b.multi) && (a.j < b.i || b.j < a.i)));
 }
 
-const STRAIGHTS = new Set(['012345', '123456', '234567', '345678', '456789']);
-
-// [id, name, icon, description, family | null, test(ctx)]
+// [id, name, icon, description, family | null, test(n, s, digitCounts)]
 const RAW = [
-  ['even', 'Even', '⚖️', 'Divisible by 2.', null, (c) => c.n % 2 === 0],
-  ['odd', 'Odd', '🦄', 'Not divisible by 2.', null, (c) => c.n % 2 === 1],
-  ['six_digits', 'Six Digits', '🔢', 'A full six-digit number.', null, (c) => c.len === 6],
-  ['small', 'Small Fry', '🐟', 'Below 10,000.', 'size', (c) => c.n < 10000],
-  ['tiny', 'Tiny', '🐜', 'Below 100.', 'size', (c) => c.n < 100],
-  ['zero', 'Absolute Zero', '🕳️', 'Rolled exactly 0.', 'special', (c) => c.n === 0],
-  ['unity', 'Unity', '☝️', 'Rolled exactly 1.', 'special', (c) => c.n === 1],
-  ['jackpot', 'JACKPOT', '💰', 'Rolled the maximum: 1,000,000.', 'special', (c) => c.n === MAX],
-
-  ['ends0', 'Clean Ending', '🧼', 'Ends in 0.', 'round', (c) => c.n > 0 && c.n % 10 === 0],
-  ['r100', 'Round Hundred', '💯', 'A multiple of 100.', 'round', (c) => c.n > 0 && c.n % 100 === 0],
-  ['r1000', 'Round Thousand', '🎯', 'A multiple of 1,000.', 'round', (c) => c.n > 0 && c.n % 1000 === 0],
-  ['r10000', 'Big Round', '🪙', 'A multiple of 10,000.', 'round', (c) => c.n > 0 && c.n % 10000 === 0],
-  ['r100000', 'Roundest', '⭕', 'A multiple of 100,000.', 'round', (c) => c.n > 0 && c.n % 100000 === 0],
-  ['ends5', 'High Five', '🖐️', 'Ends in 5.', null, (c) => c.n % 10 === 5],
-
-  ['prime', 'Prime', '💎', 'Only divisible by 1 and itself.', 'prime', (c) => c.prime],
-  ['twin', 'Twin Prime', '👯', 'A prime with another prime 2 away.', 'prime', (c) => c.prime && (isPrime(c.n - 2) || isPrime(c.n + 2))],
-  ['sophie', 'Sophie Germain', '👩‍🔬', 'A prime p where 2p+1 is also prime.', 'prime', (c) => c.prime && isPrime(2 * c.n + 1)],
-  ['emirp', 'Emirp', '🔁', 'A prime that is a different prime backwards.', 'prime', (c) => c.prime && c.rev !== c.n && isPrime(c.rev)],
-  ['palprime', 'Palindromic Prime', '🔮', 'A prime that reads the same both ways.', 'prime', (c) => c.prime && c.pal],
-  ['semiprime', 'Semiprime', '✌️', 'The product of exactly two primes.', 'factor', (c) => c.omega === 2],
-  ['primepow', 'Prime Power', '🗼', 'A prime raised to a power of 2 or more.', 'factor', (c) => c.factors.length === 1 && c.factors[0][1] >= 2],
-  ['smooth', '7-Smooth', '🧈', 'Every prime factor is 7 or less.', 'factor', (c) => c.n > 1 && c.factors[c.factors.length - 1][0] <= 7],
-  ['squarefree', 'Square-Free', '🟦', 'No prime factor appears twice.', null, (c) => c.n >= 1 && c.factors.every(([, e]) => e === 1)],
-  ['divparty', 'Divisor Party', '🎉', 'Has at least 100 divisors.', null, (c) => c.ndiv >= 100],
-  ['alldiv', 'All-Divisible', '🧮', 'Divisible by every digit 1–9.', null, (c) => c.n > 0 && c.n % 2520 === 0],
-  ['abundant', 'Abundant', '🌾', 'Its proper divisors add up to more than itself.', 'sigma', (c) => c.n >= 1 && c.sigma > 2 * c.n],
-  ['perfect', 'Perfect', '😇', 'Its proper divisors add up to exactly itself.', 'sigma', (c) => c.n >= 1 && c.sigma === 2 * c.n],
-
-  ['square', 'Perfect Square', '⏹️', 'Some whole number squared.', 'power', (c) => isSquare(c.n)],
-  ['cube', 'Perfect Cube', '🧊', 'Some whole number cubed.', 'power', (c) => isCube(c.n)],
-  ['sixth', 'Square Cube', '🎲', 'Both a square and a cube.', 'power', (c) => isSquare(c.n) && isCube(c.n)],
-  ['pow2', 'Power of Two', '💾', 'A power of 2.', 'power', (c) => c.n >= 1 && (c.n & (c.n - 1)) === 0],
-  ['mersenne', 'Mersenne', '🧱', 'One less than a power of 2.', null, (c) => c.n >= 3 && ((c.n + 1) & c.n) === 0],
-  ['triangular', 'Triangular', '🔺', 'Can be stacked into a triangle (1+2+3+…).', null, (c) => isSquare(8 * c.n + 1)],
-  ['fibonacci', 'Fibonacci', '🐚', 'In the Fibonacci sequence.', null, (c) => FIB.has(c.n)],
-  ['factorial', 'Factorial', '❗', 'Equal to k! for some k.', null, (c) => FACT.has(c.n)],
-  ['catalan', 'Catalan', '🌳', 'A Catalan number.', null, (c) => CATALAN.has(c.n)],
-  ['taxicab', 'Taxicab', '🚕', 'A sum of two cubes in two different ways (like 1729).', null, (c) => TAXICAB.has(c.n)],
-  ['automorphic', 'Automorphic', '🪞', 'Its square ends in itself.', null, (c) => c.n >= 5 && (c.n * c.n) % 10 ** c.len === c.n],
-  ['narcissist', 'Narcissist', '🌼', 'Equals the sum of its digits each raised to the digit count.', null, (c) => c.n >= 10 && c.d.reduce((a, x) => a + x ** c.len, 0) === c.n],
-  ['kaprekar', 'Kaprekar', '✂️', 'Split its square into two parts and they add back to it.', null, (c) => c.n >= 1 && kaprekar(c.n)],
-  ['harshad', 'Harshad', '🙏', 'Divisible by its own digit sum.', null, (c) => c.n > 0 && c.n % c.dsum === 0],
-
-  ['bookends', 'Mirror Bookends', '📖', 'First and last digits match.', 'mirror', (c) => c.len >= 2 && c.d[0] === c.d[c.len - 1]],
-  ['palindrome', 'Palindrome', '🪩', 'Reads the same forwards and backwards.', 'mirror', (c) => c.pal],
-  ['copypaste', 'Copy Paste', '📋', 'The first half repeated (like 123123).', 'copy', (c) => c.len >= 4 && c.len % 2 === 0 && c.s.slice(0, c.len / 2) === c.s.slice(c.len / 2)],
-  ['zigzag', 'Zigzag', '〰️', 'Two digits alternating (like 121212).', 'copy', (c) => c.len >= 4 && c.d[0] !== c.d[1] && c.d.every((x, i) => i < 2 || x === c.d[i - 2])],
-
-  ['double', 'Doubles', '👟', 'Two equal digits side by side.', 'run', (c) => c.maxRun >= 2],
-  ['triple', 'Triple', '🥉', 'Three equal digits in a row.', 'run', (c) => c.maxRun >= 3],
-  ['quad', 'Quad', '🍀', 'Four equal digits in a row.', 'run', (c) => c.maxRun >= 4],
-  ['five_run', 'Pentakill', '⚔️', 'Five equal digits in a row.', 'run', (c) => c.maxRun >= 5],
-  ['repdigit', 'Repdigit', '🔂', 'Every digit is the same.', 'run', (c) => c.len >= 2 && c.maxRun === c.len],
-
-  ['p_high', 'No Repeats', '🃏', 'Six digits, all different.', 'poker', (c) => c.len === 6 && c.hand === '111111'],
-  ['p_pair', 'One Pair', '🂡', 'Poker hand: exactly one pair of digits.', 'poker', (c) => c.len === 6 && c.hand === '21111'],
-  ['p_2pair', 'Two Pair', '🂢', 'Poker hand: two pairs of digits.', 'poker', (c) => c.len === 6 && c.hand === '2211'],
-  ['p_3pair', 'Three Pair', '🂣', 'Poker hand: three pairs of digits.', 'poker', (c) => c.len === 6 && c.hand === '222'],
-  ['p_trips', 'Three of a Kind', '🂤', 'Poker hand: three of one digit.', 'poker', (c) => c.len === 6 && c.hand === '3111'],
-  ['p_full', 'Full House', '🏠', 'Poker hand: three of one digit and two of another.', 'poker', (c) => c.len === 6 && c.hand === '321'],
-  ['p_2trips', 'Two Triples', '🏘️', 'Poker hand: three of one digit and three of another.', 'poker', (c) => c.len === 6 && c.hand === '33'],
-  ['p_quads', 'Four of a Kind', '🂥', 'Poker hand: four of one digit.', 'poker', (c) => c.len === 6 && c.hand === '411'],
-  ['p_mansion', 'Full Mansion', '🏰', 'Poker hand: four of one digit and two of another.', 'poker', (c) => c.len === 6 && c.hand === '42'],
-  ['p_five', 'Five of a Kind', '🖐', 'Poker hand: five of one digit.', 'poker', (c) => c.len === 6 && c.hand === '51'],
-  ['p_six', 'Six of a Kind', '👑', 'Poker hand: all six digits the same.', 'poker', (c) => c.len === 6 && c.hand === '6'],
-  ['p_straight', 'Straight', '📏', 'Six consecutive digits, in any order.', 'poker', (c) => c.len === 6 && STRAIGHTS.has([...c.s].sort().join(''))],
-
-  ['climber', 'Climber', '🧗', 'Digits strictly increase.', 'stairs', (c) => monotone(c, 1)],
-  ['landslide', 'Landslide', '⛰️', 'Digits strictly decrease.', 'stairs', (c) => monotone(c, -1)],
-  ['staircase', 'Staircase', '🪜', 'Digits go up by exactly 1 each step.', 'stairs', (c) => steps(c, 1)],
-  ['countdown', 'Countdown', '🚀', 'Digits go down by exactly 1 each step.', 'stairs', (c) => steps(c, -1)],
-  ['password', 'Password', '🔑', 'Exactly 123456. Please change it.', 'stairs', (c) => c.n === 123456],
-
-  ['alleven', 'All Even Digits', '2️⃣', 'Every digit is even.', 'digitset', (c) => digitsIn(c, (x) => x % 2 === 0)],
-  ['allodd', 'All Odd Digits', '1️⃣', 'Every digit is odd.', 'digitset', (c) => digitsIn(c, (x) => x % 2 === 1)],
-  ['binaryish', 'Looks Binary', '🤖', 'Only uses the digits 0 and 1.', 'digitset', (c) => digitsIn(c, (x) => x <= 1)],
-  ['highroller', 'High Roller', '🎰', 'Every digit is 5 or more.', 'digitset2', (c) => digitsIn(c, (x) => x >= 5)],
-  ['lowball', 'Lowball', '🪫', 'Every digit is 4 or less.', 'digitset2', (c) => digitsIn(c, (x) => x <= 4)],
-  ['hollow3', 'Hollow', '🫥', 'At least three 0 digits.', 'zeros', (c) => c.cnt[0] >= 3],
-  ['hollow4', 'Mostly Empty', '🫙', 'At least four 0 digits.', 'zeros', (c) => c.cnt[0] >= 4],
-  ['hollow5', 'Void Walker', '🌌', 'At least five 0 digits.', 'zeros', (c) => c.cnt[0] >= 5],
-
-  ['lucky_sum', 'Lucky Sum', '🍀', 'Digits add up to exactly 7.', null, (c) => c.dsum === 7],
-  ['heavy', 'Heavyweight', '🏋️', 'Digits add up to 45 or more.', 'dsum', (c) => c.dsum >= 45],
-  ['maxsum', 'Maxed Out', '📈', 'Digits add up to 54 — the most possible.', 'dsum', (c) => c.dsum === 54],
-  ['feather', 'Featherweight', '🪶', 'Digits add up to 3 or less.', 'dsum', (c) => c.n > 0 && c.dsum <= 3],
-  ['ticket', 'Lucky Ticket', '🎟️', 'First three digits sum to the same as the last three.', null, (c) => c.len === 6 && c.d[0] + c.d[1] + c.d[2] === c.d[3] + c.d[4] + c.d[5]],
-
-  ['seven1', 'Lucky Seven', '7️⃣', 'Contains a 7.', 'seven', (c) => has(c, '7')],
-  ['seven2', 'Double Seven', '🎲', 'Contains 77.', 'seven', (c) => has(c, '77')],
-  ['seven3', 'Triple Seven', '🎰', 'Contains 777.', 'seven', (c) => has(c, '777')],
-  ['seven4', 'Quad Seven', '🌈', 'Contains 7777.', 'seven', (c) => has(c, '7777')],
-  ['seven6', 'Heaven Sevens', '😇', 'Exactly 777777.', 'seven', (c) => c.n === 777777],
-
-  ['nice', 'Nice', '😏', 'Contains 69.', 'nice', (c) => has(c, '69')],
-  ['nicenice', 'Nice Nice', '😎', 'Contains 6969.', 'nice', (c) => has(c, '6969')],
-  ['exactnice', 'Exact Nice', '🫡', 'Exactly 69 (or 696969).', 'nice', (c) => c.n === 69 || c.n === 696969],
-  ['blaze', 'Blaze It', '🌿', 'Contains 420.', 'blaze', (c) => has(c, '420')],
-  ['exactblaze', 'Exact Blaze', '🔥', 'Exactly 420.', 'blaze', (c) => c.n === 420],
-  ['peakmeme', 'Peak Meme', '🗿', 'Contains 69420 or 42069.', 'peak', (c) => has(c, '69420') || has(c, '42069')],
-  ['leet', 'Leet', '👾', 'Contains 1337.', 'leet', (c) => has(c, '1337')],
-  ['exactleet', 'Exact Leet', '🕶️', 'Exactly 1337.', 'leet', (c) => c.n === 1337],
-  ['answer', 'Life, the Universe', '🌍', 'Contains 42.', 'answer', (c) => has(c, '42')],
-  ['exactanswer', 'The Answer', '🐬', 'Exactly 42.', 'answer', (c) => c.n === 42],
-  ['beast', 'Number of the Beast', '😈', 'Contains 666.', 'beast', (c) => has(c, '666')],
-  ['exactbeast', 'The Beast Itself', '👹', 'Exactly 666.', 'beast', (c) => c.n === 666],
-  ['sixseven', 'Six Seven', '🤷', 'Contains 67.', 'sixseven', (c) => has(c, '67')],
-  ['exactsixseven', 'Exactly Six Seven', '🙆', 'Exactly 67.', 'sixseven', (c) => c.n === 67],
-  ['bond', 'Licence to Kill', '🍸', 'Contains 007.', null, (c) => has(c, '007')],
-  ['emergency', 'Emergency', '🚨', 'Contains 911.', null, (c) => has(c, '911')],
-  ['notfound', 'Not Found', '🚫', 'Contains 404.', null, (c) => has(c, '404')],
-  ['calculator', 'Calculator Humour', '📟', 'Contains 80085 or 58008.', null, (c) => has(c, '80085') || has(c, '58008')],
-  ['pi1', 'Slice of Pi', '🥧', 'Starts with 314.', 'pi', (c) => starts(c, '314')],
-  ['pi2', 'Pi Lover', '🥮', 'Starts with 31415.', 'pi', (c) => starts(c, '31415')],
-  ['pi3', 'Exactly Pi', '🍰', 'Exactly 314159.', 'pi', (c) => c.n === 314159],
-  ['e1', "Euler's Number", '📉', 'Starts with 2718.', 'e', (c) => starts(c, '2718')],
-  ['e2', 'Exactly e', '🧪', 'Exactly 271828.', 'e', (c) => c.n === 271828],
-  ['phi1', 'Golden', '🌻', 'Starts with 1618.', 'phi', (c) => starts(c, '1618')],
-  ['phi2', 'Golden Ratio', '🏆', 'Exactly 161803.', 'phi', (c) => c.n === 161803],
-  ['cyclic', 'Cyclic', '♻️', 'Exactly 142857 (the digits of 1/7).', null, (c) => c.n === 142857],
-  ['year', 'Time Traveller', '⏳', 'A year from 1900 to 2099.', null, (c) => c.n >= 1900 && c.n <= 2099],
-  ['calendar', 'Calendar Day', '📅', 'Reads as a real date in DDMMYY.', null, validDate],
-  ['clock', 'Clockwork', '⏰', 'Reads as a real time in HHMMSS.', null, validTime],
-
-  ['binpal', 'Binary Mirror', '💻', 'A palindrome in binary.', null, (c) => { if (c.n < 1) return false; const b = c.n.toString(2); return b === [...b].reverse().join(''); }],
-  ['hexletters', 'Hex Letters', '🔤', 'In hexadecimal it is all letters (A–F).', 'hex', (c) => c.n >= 10 && /^[a-f]+$/.test(c.n.toString(16))],
-  ['hexword', 'Hexspeak', '🥩', 'Spells a word in hex (like 0xBEEF or 0xCAFE).', 'hex', (c) => HEX_WORDS.has(c.n)],
+  ['PRIME', 'Prime Number', '💎', 'Divisible only by 1 and itself.', null, (n, s, c) => isPrime(n)],
+  ['PALINDROME', 'Palindrome', '🪞', 'Reads the same forwards and backwards.', 'PALINDROME', (n, s, c) => isPalindrome(s)],
+  ['HEAVY', 'Heavy', '🧱', 'The sum of its digits exceeds 45.', null, (n, s, c) => sumDigits(n) > 45],
+  ['VOID', 'Void', '🕳️', 'Contains no zeros.', null, (n, s, c) => !s.includes('0')],
+  ['NICE', 'Nice', '😏', 'Contains the number 69.', 'NICE', (n, s, c) => s.includes('69')],
+  ['NICE_EXACT', 'Exact Nice', '😏', "Exactly \"69\".", 'NICE', (n, s, c) => s === '69'],
+  ['EVEN', 'Even', '⚖️', 'Divisible by 2.', null, (n, s, c) => n % 2 === 0],
+  ['ODD', 'Odd', '🦄', 'Not divisible by 2.', null, (n, s, c) => n % 2 === 1],
+  ['FEATHER', 'Feather', '🪶', 'The sum of its digits is less than 15.', null, (n, s, c) => sumDigits(n) < 15],
+  ['CLEAN', 'Clean', '🧼', 'Ends in a zero.', 'VOID_DEPTH', (n, s, c) => s.endsWith('0')],
+  ['SEMI_CLEAN', 'Semi-Clean', '🧹', 'Ends in a 5.', null, (n, s, c) => s.endsWith('5')],
+  ['CENTURY', 'Century', '💯', 'Ends in double zeros.', 'VOID_DEPTH', (n, s, c) => s.endsWith('00')],
+  ['MILLENNIUM', 'Millennium', '🗓️', 'Ends in triple zeros.', 'VOID_DEPTH', (n, s, c) => s.endsWith('000')],
+  ['EPOCH', 'Epoch', '🏛️', 'Ends in four zeros.', 'VOID_DEPTH', (n, s, c) => s.endsWith('0000')],
+  ['EON', 'Eon', '🗿', 'Ends in five zeros.', 'VOID_DEPTH', (n, s, c) => s.endsWith('00000')],
+  ['DOZEN', 'Dozen', '🍩', 'Divisible by 12.', null, (n, s, c) => n > 0 && n % 12 === 0],
+  ['LUCKY_SEVEN_DIV', 'Lucky Seven (Divisible)', '🎰', 'Divisible by 7.', null, (n, s, c) => n > 0 && n % 7 === 0],
+  ['ELEVEN', 'Eleven', '🕚', 'Divisible by 11.', null, (n, s, c) => n > 0 && n % 11 === 0],
+  ['GROUNDED', 'Grounded', '⚓', 'The first digit is smaller than the last.', null, (n, s, c) => s.length >= 2 && s[0] < s.at(-1)],
+  ['LIFTOFF', 'Liftoff', '🚀', 'The first digit is larger than the last.', null, (n, s, c) => s.length >= 2 && s[0] > s.at(-1)],
+  ['EQUILIBRIUM', 'Equilibrium', '🧘', 'The first and last digits are identical.', 'EQUILIBRIUM', (n, s, c) => s.length >= 2 && s[0] === s.at(-1)],
+  ['TURTLE', 'Turtle', '🐢', 'All consecutive digits differ by at most 1.', 'PROGRESSION', (n, s, c) => s.length >= 2 && diffs(s).every((d) => Math.abs(d) <= 1)],
+  ['FIREFLY', 'Firefly', '🪲', 'One unique digit among identical others.', 'DUALITY', (n, s, c) => s.length >= 4 && distinct(c) === 2 && c.includes(1)],
+  ['ECHO', 'Echo', '📣', 'The first half repeats as the second half.', null, (n, s, c) => s.length % 2 === 0 && s.length >= 2 && s.slice(0, s.length / 2) === s.slice(s.length / 2)],
+  ['SANDWICH', 'Sandwich', '🥪', 'First and last digits match, with at least one different digit between them.', 'EQUILIBRIUM', (n, s, c) => s.length >= 3 && s[0] === s.at(-1) && [...s.slice(1, -1)].some((x) => x !== s[0])],
+  ['BOOKENDS', 'Bookends', '📚', 'The first two digits match the last two.', 'BOOKENDS', (n, s, c) => s.length >= 4 && s.slice(0, 2) === s.slice(-2)],
+  ['ASCENSION', 'Ascension', '📈', 'Every digit is strictly larger than the previous.', 'MONOTONIC', (n, s, c) => s.length >= 2 && diffs(s).every((d) => d > 0)],
+  ['DECAY', 'Decay', '📉', 'Every digit is strictly smaller than the previous.', 'MONOTONIC', (n, s, c) => s.length >= 2 && diffs(s).every((d) => d < 0)],
+  ['STEPS', 'Steps', '🪜', 'Digits never decrease.', 'MONOTONIC', (n, s, c) => s.length >= 2 && diffs(s).every((d) => d >= 0) && diffs(s).some((d) => d > 0)],
+  ['SLOPES', 'Slopes', '🛝', 'Digits never increase.', 'MONOTONIC', (n, s, c) => s.length >= 2 && diffs(s).every((d) => d <= 0) && diffs(s).some((d) => d < 0)],
+  ['CASCADE', 'Cascade', '🌊', 'Every digit increases by exactly 1 from the previous.', 'PROGRESSION', (n, s, c) => s.length >= 2 && diffs(s).every((d) => d === 1)],
+  ['WATERFALL', 'Waterfall', '🚿', 'Every digit decreases by exactly 1 from the previous.', 'PROGRESSION', (n, s, c) => s.length >= 2 && diffs(s).every((d) => d === -1)],
+  ['MOUNTAIN', 'Mountain', '🏔️', 'Digits ascend to a peak and then descend.', 'PEAK', (n, s, c) => peak(s, 1)],
+  ['VALLEY', 'Valley', '🏜️', 'Digits descend to a trough and then ascend.', 'PEAK', (n, s, c) => peak(s, -1)],
+  ['MESA', 'Mesa', '🗻', 'Digits rise to a peak, then fall (flat stretches allowed).', 'PEAK', (n, s, c) => riseThenFall(diffs(s))],
+  ['CANYON', 'Canyon', '🌄', 'Digits fall to a floor, then rise (flat stretches allowed).', 'PEAK', (n, s, c) => riseThenFall(diffs(s).map((d) => -d))],
+  ['HILLS', 'Hills', '🏞️', 'Digits strictly alternate between rising and falling.', 'HILLS', (n, s, c) => s.length >= 4 && zigzag(diffs(s))],
+  ['DUNES', 'Dunes', '🐫', 'Rises and falls keep alternating (flat stretches allowed).', 'HILLS', (n, s, c) => zigzagFlat(s)],
+  ['POCKET_MIRROR', 'Pocket Mirror', '🪞', 'Contains a palindrome of 4 or more digits.', 'PALINDROME', (n, s, c) => hasPalindromeOf(s, 4)],
+  ['MINI_ECHO', 'Mini Echo', '🔂', 'Contains an adjacent 2-digit repeat.', 'REPEAT', (n, s, c) => /(\d\d)\1/.test(s)],
+  ['RHYME', 'Rhyme', '🎶', 'Contains the same 2+ digit substring twice.', 'REPEAT', (n, s, c) => hasRepeatedSubstring(s)],
+  ['CONTIGUOUS_TRIPS', 'Contiguous Trips', '➖', 'Three identical consecutive digits.', 'CONTIGUOUS_RUN', (n, s, c) => /(\d)\1\1/.test(s)],
+  ['CONTIGUOUS_QUADS', 'Contiguous Quads', '➖➖', 'Four identical consecutive digits.', 'CONTIGUOUS_RUN', (n, s, c) => /(\d)\1{3}/.test(s)],
+  ['CONTIGUOUS_FIVES', 'Contiguous Fives', '➖➖➖', 'Five identical consecutive digits.', 'CONTIGUOUS_RUN', (n, s, c) => /(\d)\1{4}/.test(s)],
+  ['CONTIGUOUS_SIXES', 'Contiguous Sixes', '➖➖➖➖', 'Six identical consecutive digits.', 'CONTIGUOUS_RUN', (n, s, c) => /(\d)\1{5}/.test(s)],
+  ['BINARY_SOUL', 'Binary Soul', '🤖', 'Only 0s and 1s.', null, (n, s, c) => /^[01]+$/.test(s)],
+  ['DUALITY', 'Duality', '☯️', 'Uses exactly two different digits.', 'DUALITY', (n, s, c) => distinct(c) === 2],
+  ['TRINITY', 'Trinity', '⚜️', 'Uses exactly three different digits.', null, (n, s, c) => distinct(c) === 3],
+  ['QUARTET', 'Quartet', '🎻', 'Uses exactly four different digits.', null, (n, s, c) => distinct(c) === 4],
+  ['HETEROGENEOUS', 'Heterogeneous', '🥗', 'No repeated digits.', null, (n, s, c) => distinct(c) === s.length],
+  ['HOMOGENEOUS', 'Homogeneous', '🥛', 'All digits are the same.', null, (n, s, c) => s.length >= 2 && distinct(c) === 1],
+  ['ALTERNATOR', 'Alternator', '⚡', 'Digits strictly alternate between even and odd.', null, (n, s, c) => s.length >= 2 && diffs(s).every((d) => d % 2 !== 0)],
+  ['ZIPPER', 'Zipper', '🤐', 'Two digits alternating perfectly.', null, (n, s, c) => s.length >= 2 && distinct(c) === 2 && diffs(s).every((d) => d !== 0)],
+  ['HOPSCOTCH', 'Hopscotch', '🦘', 'A digit appears at every other position (2 times).', 'HOPSCOTCH', (n, s, c) => hopscotch(s, c)],
+  ['DOUBLE_HOP', 'Double Hop', '🦘🦘', 'A digit appears at every other position (3 times).', 'HOPSCOTCH', (n, s, c) => s.length >= 5 && distinct(c) >= 2 && /(\d)\d\1\d\1/.test(s)],
+  ['FRAMED_PAIR', 'Framed Pair', '🖼️', 'A 4-digit number where the middle two digits match each other but differ from both end digits.', 'PAIRS', (n, s, c) => s.length === 4 && s[1] === s[2] && s[0] !== s[1] && s[3] !== s[1]],
+  ['FRAMED_TRIPLE', 'Framed Triple', '🖼️🖼️', 'A triple in the middle, bookended by different digits.', 'OF_A_KIND', (n, s, c) => s.length === 5 && s[1] === s[2] && s[2] === s[3] && s[0] !== s[1] && s[4] !== s[1]],
+  ['FRAMED_QUAD', 'Framed Quad', '🪟', 'Four of a kind in the middle, bookended by different digits.', 'OF_A_KIND', (n, s, c) => s.length === 6 && s[2] === s[1] && s[3] === s[1] && s[4] === s[1] && s[0] !== s[1] && s[5] !== s[1]],
+  ['FRAMED_DOUBLE', 'Framed Double', '🖼️🖼️🖼️', 'Two pairs in the middle, bookended by different digits.', 'PAIRS', (n, s, c) => s.length === 6 && s[1] === s[2] && s[3] === s[4] && s[1] !== s[3] && s[0] !== s[1] && s[5] !== s[3]],
+  ['SQUARE', '2nd Power', '🟦', 'A perfect square (n²).', 'POWER', (n, s, c) => isSquare(n)],
+  ['CUBE', '3rd Power', '🧊', 'A perfect cube (n³).', 'POWER', (n, s, c) => isCube(n)],
+  ['FOURTH_POWER', '4th Power', '📦', 'A perfect fourth power (n⁴).', 'POWER', (n, s, c) => isPerfectPower(n, 4)],
+  ['FIFTH_POWER', '5th Power', '🖐️', 'A perfect fifth power (n⁵).', 'POWER', (n, s, c) => isPerfectPower(n, 5)],
+  ['SIXTH_POWER', '6th Power', '🎲', 'A perfect sixth power (n⁶).', 'POWER', (n, s, c) => isPerfectPower(n, 6)],
+  ['SEVENTH_POWER', '7th Power', '🌈', 'A perfect seventh power (n⁷).', 'POWER', (n, s, c) => isPerfectPower(n, 7)],
+  ['EIGHTH_POWER', '8th Power', '🎱', 'A perfect eighth power (n⁸).', 'POWER', (n, s, c) => isPerfectPower(n, 8)],
+  ['NINTH_POWER', '9th Power', '☁️', 'A perfect ninth power (n⁹).', 'POWER', (n, s, c) => isPerfectPower(n, 9)],
+  ['TENTH_POWER', '10th Power', '🔟', 'A perfect tenth power (n¹⁰).', 'POWER', (n, s, c) => isPerfectPower(n, 10)],
+  ['ELEVENTH_POWER', '11th Power', '🕚', 'A perfect eleventh power (n¹¹).', 'POWER', (n, s, c) => isPerfectPower(n, 11)],
+  ['THIRTEENTH_POWER', '13th Power', '💀', 'A perfect thirteenth power (n¹³).', 'POWER', (n, s, c) => isPerfectPower(n, 13)],
+  ['SEVENTEENTH_POWER', '17th Power', '🧙', 'A perfect seventeenth power (n¹⁷).', 'POWER', (n, s, c) => isPerfectPower(n, 17)],
+  ['NINETEENTH_POWER', '19th Power', '🌑', 'A perfect nineteenth power (n¹⁹).', 'POWER', (n, s, c) => isPerfectPower(n, 19)],
+  ['FIBONACCI', 'Fibonacci Number', '🐚', 'Part of the golden ratio sequence found in nature.', null, (n, s, c) => isSquare(5 * n * n + 4) || isSquare(5 * n * n - 4)],
+  ['POWER_OF_TWO', 'Power of Two', '💾', 'A power of 2 (2ⁿ).', null, (n, s, c) => isPowerOf(n, 2)],
+  ['POWER_OF_THREE', 'Power of Three', '🔺', 'A power of 3 (3ⁿ).', null, (n, s, c) => isPowerOf(n, 3)],
+  ['POWER_OF_FIVE', 'Power of Five', '5️⃣', 'A power of 5 (5ⁿ).', null, (n, s, c) => isPowerOf(n, 5)],
+  ['POWER_OF_SEVEN', 'Power of Seven', '7️⃣', 'A power of 7 (7ⁿ).', null, (n, s, c) => isPowerOf(n, 7)],
+  ['OUROBOROS', 'Ouroboros', '🐍', 'A number raised to itself: nⁿ (1¹, 2², ... 7⁷).', 'POWER', (n, s, c) => [1, 4, 27, 256, 3125, 46656, 823543].includes(n)],
+  ['EQUATION', 'Equation', '🟰', 'Insert one of + − × ÷ and an equals sign to make a true equation.', null, (n, s, c) => hasEquation(s)],
+  ['FACTORIAL', 'Factorial', '❗', 'A factorial number (n!).', null, (n, s, c) => FACTORIALS.has(n)],
+  ['HARSHAD', 'Harshad Number', '🤝', 'Divisible by the sum of its own digits.', null, (n, s, c) => n > 0 && n % sumDigits(n) === 0],
+  ['SPY', 'Spy Number', '🕵️', 'The sum of its digits equals the product of its digits.', null, (n, s, c) => n !== 1 && n !== 2 && sumDigits(n) === productDigits(n)],
+  ['PRONIC', 'Pronic Number', '🧮', 'The product of two consecutive integers (n * n+1).', null, (n, s, c) => isPronic(n)],
+  ['PAIR', 'Pair', '👯', 'Contains a pair of matching digits.', 'PAIRS', (n, s, c) => c.some((k) => k >= 2)],
+  ['CONTIGUOUS_PAIR', 'Contiguous Pair', '🫂', 'Contains a contiguous pair of matching digits.', 'PAIRS', (n, s, c) => /(\d)\1/.test(s)],
+  ['TWO_PAIR', 'Two Pair', '👯‍♀️', 'Contains two distinct pairs of matching digits.', 'PAIRS', (n, s, c) => c.filter((k) => k >= 2).length >= 2],
+  ['CONTIGUOUS_TWO_PAIR', 'Contiguous Two Pair', '👨‍👩‍👧‍👦', 'Contains two adjacent contiguous pairs.', 'PAIRS', (n, s, c) => /(\d)\1(?!\1)(\d)\2/.test(s)],
+  ['THREE_PAIR', 'Three Pair', '👯‍♀️👯', 'Contains three distinct pairs of matching digits.', 'PAIRS', (n, s, c) => c.filter((k) => k === 2).length >= 3],
+  ['CONTIGUOUS_THREE_PAIR', 'Contiguous Three Pair', '👨‍👩‍👧‍👦👯', 'Contains three adjacent contiguous pairs.', 'PAIRS', (n, s, c) => contiguousThreePair(s, c)],
+  ['TRIPS', 'Three of a Kind', '🎰', 'Contains three identical digits.', 'OF_A_KIND', (n, s, c) => c.includes(3)],
+  ['QUADS', 'Four of a Kind', '🍀', 'Contains four identical digits.', 'OF_A_KIND', (n, s, c) => c.some((k) => k >= 4)],
+  ['FIVE_OF_A_KIND', 'Five of a Kind', '🃏', 'Contains five identical digits.', 'OF_A_KIND', (n, s, c) => c.some((k) => k >= 5)],
+  ['BOAT', 'Full House', '🏠', 'Contains a set of three and a set of two.', 'BOAT', (n, s, c) => c.some((k) => k >= 3) && c.filter((k) => k >= 2).length >= 2],
+  ['CONTIGUOUS_BOAT', 'Contiguous Full House', '🏰', 'Contains a contiguous set of three adjacent to a contiguous set of two.', 'BOAT', (n, s, c) => contiguousBoat(s, c)],
+  ['STRAIGHT', 'Straight', '📏', 'Contains a sequence of 5 consecutive digits (ascending or descending).', 'STRAIGHT', (n, s, c) => hasRun(s, 5)],
+  ['FLUSH', 'Flush', '🎨', 'All digits are either all even or all odd.', null, (n, s, c) => /^[02468]+$|^[13579]+$/.test(s)],
+  ['STRAIGHT_FLUSH', 'Straight Flush', '🃏', 'Contains 5 consecutive same-parity digits (02468, 13579, or their reverse).', 'STRAIGHT', (n, s, c) => ['02468', '13579', '86420', '97531'].some((x) => s.includes(x))],
+  ['ROYAL_FLUSH', 'Royal Flush', '👑', 'Contains 56789 — the highest possible straight.', 'STRAIGHT', (n, s, c) => s.includes('56789')],
+  ['LOW_BALL', 'Low Ball', '📉', 'Contains only digits from 0 to 4.', null, (n, s, c) => /^[0-4]+$/.test(s)],
+  ['HIGH_ROLLER', 'High Roller', '🤑', 'Contains only digits from 5 to 9.', null, (n, s, c) => /^[5-9]+$/.test(s)],
+  ['SNAKE_EYES', 'Snake Eyes', '🎲', 'Contains a single pair of ones and no other pairs.', null, (n, s, c) => c[1] === 2 && c.every((k, d) => d === 1 || k < 2)],
+  ['LUCKY_7', 'Lucky Seven', '7️⃣', 'Contains the number 7.', null, (n, s, c) => s.includes('7')],
+  ['JACKPOT', 'Jackpot', '💰', "Contains \"777\".", 'JACKPOT', (n, s, c) => s.includes('777')],
+  ['JACKPOT_EXACT', 'Exact Jackpot', '💰', "Exactly \"777\".", 'JACKPOT', (n, s, c) => s === '777'],
+  ['JACKPOT_FOUR', 'Jackpot Four', '💰💰', 'Contains four 7s in a row.', 'JACKPOT', (n, s, c) => s.includes('7777')],
+  ['JACKPOT_FIVE', 'Jackpot Five', '💰💰💰', 'Contains five 7s in a row.', 'JACKPOT', (n, s, c) => s.includes('77777')],
+  ['JACKPOT_SIX', 'Jackpot Six', '🏦', 'Contains six 7s in a row.', 'JACKPOT', (n, s, c) => s.includes('777777')],
+  ['BLACKJACK', 'Blackjack', '♠️', 'Digits sum exactly to 21.', null, (n, s, c) => sumDigits(n) === 21],
+  ['VERY_NICE', 'Very Nice', '🥵', "Contains \"6969\".", 'NICE', (n, s, c) => s.includes('6969')],
+  ['BOTANIST', 'Botanist', '🌿', "Contains \"420\".", 'BOTANIST', (n, s, c) => s.includes('420')],
+  ['BOTANIST_EXACT', 'Exact Botanist', '🌿', "Exactly \"420\".", 'BOTANIST', (n, s, c) => s === '420'],
+  ['DEVIL', 'Devil', '😈', "Contains \"666\".", 'DEVIL', (n, s, c) => s.includes('666')],
+  ['DEVIL_EXACT', 'Exact Devil', '😈', "Exactly \"666\".", 'DEVIL', (n, s, c) => s === '666'],
+  ['LEET', 'Leet', '💻', "Contains \"1337\".", 'LEET', (n, s, c) => s.includes('1337')],
+  ['LEET_EXACT', 'Exact Leet', '💻', "Exactly \"1337\".", 'LEET', (n, s, c) => s === '1337'],
+  ['HELL', 'Hell', '🔥', "Contains \"7734\" (spells HELL upside-down).", 'HELL', (n, s, c) => s.includes('7734')],
+  ['EXACT_HELL', 'Exact Hell', '👹', "Exactly \"7734\".", 'HELL', (n, s, c) => s === '7734'],
+  ['BOOB_8008', '8008', '🔢', "Contains \"8008\" (spells BOOB upside-down).", 'BOOB', (n, s, c) => s.includes('8008')],
+  ['BOOB_58008', '58008', '🔠', "Contains \"58008\" (spells BOOBS upside-down).", 'BOOB', (n, s, c) => s.includes('58008')],
+  ['BOOB_80085', '80085', '🅱️', "Contains \"80085\" (spells BOOBS).", 'BOOB', (n, s, c) => s.includes('80085')],
+  ['EXACT_BOOB', 'Exact Boob', '🍈', "Exactly \"8008\" or \"58008\".", 'BOOB', (n, s, c) => s === '8008' || s === '58008'],
+  ['EXACT_BOOB_80085', 'Exact 80085', '💎', "Exactly \"80085\".", 'BOOB', (n, s, c) => s === '80085'],
+  ['HELLO', 'Hello', '👋', "Contains \"07734\" (spells HELLO upside-down).", null, (n, s, c) => s.includes('07734')],
+  ['MEANING', 'Meaning of Life', '🌌', "Contains \"42\".", 'BOTANIST', (n, s, c) => s.includes('42')],
+  ['MEANING_EXACT', 'Exact Meaning', '🌌', "Exactly \"42\".", 'BOTANIST', (n, s, c) => s === '42'],
+  ['EMERGENCY', 'Emergency', '🚑', "Contains \"911\".", 'EMERGENCY', (n, s, c) => s.includes('911')],
+  ['EMERGENCY_EXACT', 'Exact Emergency', '🚑', "Exactly \"911\".", 'EMERGENCY', (n, s, c) => s === '911'],
+  ['ERROR', 'Error 404', '🚫', "Contains \"404\".", 'ERROR', (n, s, c) => s.includes('404')],
+  ['ERROR_EXACT', 'Not Found', '🚫', "Exactly \"404\".", 'ERROR', (n, s, c) => s === '404'],
+  ['INFERNAL', 'Infernal', '🔱', "Exactly \"666666\".", 'DEVIL', (n, s, c) => s === '666666'],
+  ['FOOTBALL_17776', '17776', '🏈', "Exactly \"17776\".", null, (n, s, c) => s === '17776'],
+  ['ULTIMEME', 'Funny Numbers', '😂', "Contains both \"69\" and \"420\".", 'ULTIMEME', (n, s, c) => s.includes('69') && s.includes('420')],
+  ['ULTIMEME_EXACT', 'Funny Number', '😂', "Exactly \"69420\" or \"42069\".", 'ULTIMEME', (n, s, c) => s === '69420' || s === '42069'],
+  ['VERY_VERY_NICE', 'Very Very Nice', '😏', "Exactly \"696969\".", 'NICE', (n, s, c) => s === '696969'],
+  ['HOTBOX', 'Hotbox', '🌿', "Exactly \"420420\".", 'BOTANIST', (n, s, c) => s === '420420'],
+  ['MAYDAY', 'Mayday', '🚑', "Exactly \"911911\".", 'EMERGENCY', (n, s, c) => s === '911911'],
+  ['DEEPER_MEANING', 'Deeper Meaning', '🌌', "Contains \"4242\".", 'MEANING', (n, s, c) => s.includes('4242')],
+  ['UNIVERSAL_ANSWER', 'Universal Answer', '🌌', "Exactly \"424242\".", 'MEANING', (n, s, c) => s === '424242'],
+  ['SECRET_AGENT', 'Secret Agent', '🕶️', "Contains \"007\".", null, (n, s, c) => s.includes('007')],
+  ['BIG_BROTHER', 'Big Brother', '👁️', "Contains \"1984\".", 'BIG_BROTHER', (n, s, c) => s.includes('1984')],
+  ['BIG_BROTHER_EXACT', 'Orwellian', '👁️', "Exactly \"1984\".", 'BIG_BROTHER', (n, s, c) => s === '1984'],
+  ['HYDROGEN', 'Hydrogen (1)', '💧', "Contains exactly one \"1\".", null, (n, s, c) => c[1] === 1],
+  ['HELIUM', 'Helium (2)', '🎈', "Contains exactly one \"2\".", null, (n, s, c) => c[2] === 1],
+  ['CARBON', 'Carbon (6)', '✏️', "Contains exactly one \"6\".", null, (n, s, c) => c[6] === 1],
+  ['OXYGEN', 'Oxygen (8)', '💨', "Contains exactly one \"8\".", null, (n, s, c) => c[8] === 1],
+  ['LITHIUM', 'Lithium (3)', '🔋', "Contains exactly one \"3\".", null, (n, s, c) => c[3] === 1],
+  ['BERYLLIUM', 'Beryllium (4)', '💎', "Contains exactly one \"4\".", null, (n, s, c) => c[4] === 1],
+  ['BORON', 'Boron (5)', '🧼', "Contains exactly one \"5\".", null, (n, s, c) => c[5] === 1],
+  ['NITROGEN', 'Nitrogen (7)', '❄️', "Contains exactly one \"7\".", null, (n, s, c) => c[7] === 1],
+  ['FLUORINE', 'Fluorine (9)', '🦷', "Contains exactly one \"9\".", null, (n, s, c) => c[9] === 1],
+  ['GHOST', 'Ghost', '👻', "Contains exactly one \"0\".", null, (n, s, c) => c[0] === 1],
+  ['DEEP_VOID', 'Deep Void', '🕳️', "Contains \"00\".", 'VOID_DEPTH', (n, s, c) => s.includes('00')],
+  ['DEEP_VOID_THREE', 'Deep Void (3)', '🌑', "Contains \"000\".", 'VOID_DEPTH', (n, s, c) => s.includes('000')],
+  ['DEEP_VOID_FOUR', 'Deep Void (4)', '🌌', "Contains \"0000\".", 'VOID_DEPTH', (n, s, c) => s.includes('0000')],
+  ['DEEP_VOID_FIVE', 'Deep Void (5)', '⚫', "Contains \"00000\".", 'VOID_DEPTH', (n, s, c) => s.includes('00000')],
+  ['SEQUENCE_3', 'Sequence (3)', '🔢', 'Contains a sequence of 3 consecutive digits.', 'PROGRESSION', (n, s, c) => hasRun(s, 3)],
+  ['SEQUENCE_4', 'Sequence (4)', '🔢', 'Contains a sequence of 4 consecutive digits.', 'PROGRESSION', (n, s, c) => hasRun(s, 4)],
+  ['SEQUENCE_6', 'Sequence (6)', '🔢', 'Contains a sequence of 6 consecutive digits.', 'PROGRESSION', (n, s, c) => hasRun(s, 6)],
+  ['SCRAMBLE', 'Scramble', '🔀', 'All digits form a consecutive sequence when sorted.', 'PROGRESSION', (n, s, c) => isScrambledRun(s)],
+  ['MINI_SCRAMBLE', 'Mini Scramble', '🧩', 'Contains 3 or more adjacent digits that form a run when sorted.', 'PROGRESSION', (n, s, c) => hasScrambledRun(s)],
+  ['NEIGHBORS', 'Neighbors', '🏘️', 'Contains two digits that are adjacent in value.', null, (n, s, c) => diffs(s).some((d) => Math.abs(d) === 1)],
+  ['GAP_ONE', 'Gap One', '↕️', 'The first and last digits differ by exactly 1.', null, (n, s, c) => s.length >= 2 && Math.abs(s.at(-1) - s[0]) === 1],
+  ['ONE_DIGIT', 'Single Digit', '☝️', 'Has exactly one digit.', 'SINGLE_DIGIT', (n, s, c) => s.length === 1],
+  ['DIGIT_ZERO', 'Zero', '0️⃣', 'The number zero.', 'SINGLE_DIGIT', (n, s, c) => s === '0'],
+  ['DIGIT_ONE', 'One', '1️⃣', 'The number one.', 'SINGLE_DIGIT', (n, s, c) => s === '1'],
+  ['DIGIT_TWO', 'Two', '2️⃣', 'The number two.', 'SINGLE_DIGIT', (n, s, c) => s === '2'],
+  ['DIGIT_THREE', 'Three', '3️⃣', 'The number three.', 'SINGLE_DIGIT', (n, s, c) => s === '3'],
+  ['DIGIT_FOUR', 'Four', '4️⃣', 'The number four.', 'SINGLE_DIGIT', (n, s, c) => s === '4'],
+  ['DIGIT_FIVE', 'Five', '5️⃣', 'The number five.', 'SINGLE_DIGIT', (n, s, c) => s === '5'],
+  ['DIGIT_SIX', 'Six', '6️⃣', 'The number six.', 'SINGLE_DIGIT', (n, s, c) => s === '6'],
+  ['DIGIT_SEVEN', 'Seven', '7️⃣', 'The number seven.', 'SINGLE_DIGIT', (n, s, c) => s === '7'],
+  ['DIGIT_EIGHT', 'Eight', '8️⃣', 'The number eight.', 'SINGLE_DIGIT', (n, s, c) => s === '8'],
+  ['DIGIT_NINE', 'Nine', '9️⃣', 'The number nine.', 'SINGLE_DIGIT', (n, s, c) => s === '9'],
+  ['TWO_DIGITS', 'Two Digits', '✌️', 'Has exactly two digits.', null, (n, s, c) => s.length === 2],
+  ['THREE_DIGITS', 'Three Digits', '🤟', 'Has exactly three digits.', null, (n, s, c) => s.length === 3],
+  ['FOUR_DIGITS', 'Four Digits', '🍀', 'Has exactly four digits.', null, (n, s, c) => s.length === 4],
+  ['FIVE_DIGITS', 'Five Digits', '🖐️', 'Has exactly five digits.', null, (n, s, c) => s.length === 5],
+  ['SIX_DIGITS', 'Six Digits', '🐝', 'Has exactly six digits.', null, (n, s, c) => s.length === 6],
+  ['DOUBLE_NINE', 'Double Nine', '🎈', 'Ends in 99.', 'NINE_ENDING', (n, s, c) => s.endsWith('99')],
+  ['TRIPLE_NINE', 'Triple Nine', '🎉', 'Ends in 999.', 'NINE_ENDING', (n, s, c) => s.endsWith('999')],
+  ['QUAD_NINE', 'Quad Nine', '🎊', 'Ends in 9999.', 'NINE_ENDING', (n, s, c) => s.endsWith('9999')],
+  ['QUINT_NINE', 'Quint Nine', '🥳', 'Ends in 99999.', 'NINE_ENDING', (n, s, c) => s.endsWith('99999')],
+  ['EVEN_SPACING', 'Even Spacing', '📏', 'All digits are evenly spaced in an arithmetic sequence.', 'PROGRESSION', (n, s, c) => s.length >= 3 && new Set(diffs(s)).size === 1],
+  ['EVEN_SPACING_ABS', 'Even Spacing (Absolute)', '📐', 'All digits have the same absolute spacing (e.g., ±2 each time).', 'PROGRESSION', (n, s, c) => s.length >= 3 && new Set(diffs(s).map(Math.abs)).size === 1],
+  ['MIRROR_BOOKENDS', 'Mirror Bookends', '📖', 'First two digits are reversed as the last two.', 'BOOKENDS', (n, s, c) => s.length >= 4 && s[0] === s.at(-1) && s[1] === s.at(-2)],
+  ['PAIRED_BOOKENDS', 'Paired Bookends', '👐', 'Starts with a pair and ends with a different pair.', 'BOOKENDS', (n, s, c) => s.length >= 4 && s[0] === s[1] && s.at(-2) === s.at(-1) && s[0] !== s.at(-1)],
+  ['DIVISIBLE_BY_THREE', 'Divisible by Three', '🔺', 'Every digit is divisible by 3.', null, (n, s, c) => /^[0369]+$/.test(s)],
+  ['BALANCED', 'Balanced', '⚖️', 'Sum of first half of digits equals sum of second half.', null, (n, s, c) => s.length % 2 === 0 && s.length >= 2 && digitSum(s.slice(0, s.length / 2)) === digitSum(s.slice(s.length / 2))],
+  ['STROBOGRAMMATIC', 'Strobogrammatic', '🙃', 'Looks the same when rotated 180 degrees.', null, (n, s, c) => /^[01689]+$/.test(s) && [...s].reverse().map((x) => ROTATED[x]).join('') === s],
+  ['PI_CONTAINS_3', 'Pi Slice (3)', '🥧', "Contains \"314\".", 'PI', (n, s, c) => s.includes('314')],
+  ['PI_CONTAINS_4', 'Pi Slice (4)', '🥧', "Contains \"3141\".", 'PI', (n, s, c) => s.includes('3141')],
+  ['PI_CONTAINS_5', 'Pi Slice (5)', '🥧', "Contains \"31415\".", 'PI', (n, s, c) => s.includes('31415')],
+  ['PI', 'Pi', '🥧', 'Exactly π (314, 3141, 31415, or 314159).', 'PI', (n, s, c) => ['314', '3141', '31415', '314159'].includes(s)],
+  ['E_CONTAINS_3', 'E Slice (3)', '📈', "Contains \"271\".", 'E', (n, s, c) => s.includes('271')],
+  ['E_CONTAINS_4', 'E Slice (4)', '📈', "Contains \"2718\".", 'E', (n, s, c) => s.includes('2718')],
+  ['E_CONTAINS_5', 'E Slice (5)', '📈', "Contains \"27182\".", 'E', (n, s, c) => s.includes('27182')],
+  ['E', 'Euler\'s Number', '📈', 'The number e (271, 2718, 27182, or 271828).', 'E', (n, s, c) => ['271', '2718', '27182', '271828'].includes(s)],
+  ['TAU_SLICE_4', 'Tau Slice (4)', '🌀', "Contains \"6283\".", 'TAU', (n, s, c) => s.includes('6283')],
+  ['TAU_SLICE_5', 'Tau Slice (5)', '🌀', "Contains \"62831\".", 'TAU', (n, s, c) => s.includes('62831')],
+  ['TAU', 'Tau', '🌀', 'Exactly τ (6283, 62831, or 628318).', 'TAU', (n, s, c) => ['6283', '62831', '628318'].includes(s)],
+  ['GOLDEN_RATIO', 'Golden Ratio', '🐚', 'Exactly φ (1618, 16180, or 161803).', null, (n, s, c) => ['1618', '16180', '161803'].includes(s)],
+  ['QUARTER_CENTURY', 'Quarter-Century', '🪙', "Ends in \"25\".", null, (n, s, c) => s.endsWith('25')],
+  ['SEMI_CENTURY', 'Semi-Century', '🗓️', "Ends in \"50\".", 'VOID_DEPTH', (n, s, c) => s.endsWith('50')],
+  ['THREE_QUARTER_CENTURY', 'Three-Quarter Century', '🕰️', "Ends in \"75\".", null, (n, s, c) => s.endsWith('75')],
+  ['SEMI_MILLENNIUM', 'Semi-Millennium', '📜', "Ends in \"500\".", 'VOID_DEPTH', (n, s, c) => s.endsWith('500')],
+  ['SEMI_EPOCH', 'Semi-Epoch', '⌛', "Ends in \"5000\".", 'VOID_DEPTH', (n, s, c) => s.endsWith('5000')],
+  ['SEMI_EON', 'Semi-Eon', '🦴', "Ends in \"50000\".", 'VOID_DEPTH', (n, s, c) => s.endsWith('50000')],
+  ['SIXTY_SEVEN', 'Six-Seven', '🫠', "Contains \"67\".", 'SIXTY_SEVEN', (n, s, c) => s.includes('67')],
+  ['SIXTY_SEVEN_EXACT', 'Exact Six-Seven', '🫠', "Exactly \"67\".", 'SIXTY_SEVEN', (n, s, c) => s === '67'],
+  ['EIGHTY_SIX', 'Eighty-Six', '🍽️', "Contains \"86\" (restaurant slang for \"out of\").", 'EIGHTY_SIX', (n, s, c) => s.includes('86')],
+  ['EIGHTY_SIX_EXACT', 'Exact Eighty-Six', '🍽️', "Exactly \"86\".", 'EIGHTY_SIX', (n, s, c) => s === '86'],
+  ['ORIENTATION', 'Orientation', '🧭', "Contains \"101\" (intro course number).", 'ORIENTATION', (n, s, c) => s.includes('101')],
+  ['ORIENTATION_EXACT', 'Exact Orientation', '🧭', "Exactly \"101\".", 'ORIENTATION', (n, s, c) => s === '101'],
+  ['CALENDAR', 'Calendar', '📅', "Contains \"365\" (days in a year).", 'CALENDAR', (n, s, c) => s.includes('365')],
+  ['CALENDAR_EXACT', 'Exact Calendar', '📅', "Exactly \"365\".", 'CALENDAR', (n, s, c) => s === '365'],
+  ['SIXTY_SEVEN_DOUBLE', '6767', '🫠', "Contains \"6767\".", 'SIXTY_SEVEN', (n, s, c) => s.includes('6767')],
+  ['BRAINROT', 'Brainrot', '🫠', "Exactly \"676767\".", 'SIXTY_SEVEN', (n, s, c) => s === '676767'],
+  ['GROUNDHOG_DAY', 'Groundhog Day', '📅', "Exactly \"365365\".", 'CALENDAR', (n, s, c) => s === '365365'],
+  ['ALWAYS', 'Always', '♾️', "Exactly \"247365\" or \"365247\" (24/7, 365).", 'CALENDAR', (n, s, c) => s === '247365' || s === '365247'],
+  ['FULL_DAY', 'Full Day', '⏳', "Exactly \"86400\", the number of seconds in a day.", null, (n, s, c) => s === '86400'],
+  ['COLOSSAL', 'Colossal', '🪨', 'A number greater than 999,000.', null, (n, s, c) => n > 999000],
+  ['ONE_MILLION', 'One Million', '🐐', 'The number one million.', null, (n, s, c) => n === 1000000],
+  ['CONSEC_QUAD_EXACT', '4 Consecutive Numbers', '⛓️', 'The entire number splits into four consecutive integers in order.', 'CONSECUTIVE', (n, s, c) => isMonotonic(wholeConsecutiveSplit(s, 4))],
+  ['CONSEC_QUAD_SCRAMBLED', '4 Consecutive Numbers (Scrambled)', '🔀', 'The entire number splits into four consecutive integers, but not in order.', 'CONSECUTIVE', (n, s, c) => isMonotonic(wholeConsecutiveSplit(s, 4)) === false],
+  ['CONSEC_QUAD_CONTAINS', '4 Consecutive Numbers (Contains)', '🔗', 'Contains four adjacent consecutive integers.', 'CONSECUTIVE', (n, s, c) => consecutiveRunInside(s, 4)],
+  ['CONSEC_TRIPLE_EXACT', '3 Consecutive Numbers', '⛓️', 'The entire number splits into three consecutive integers in order.', 'CONSECUTIVE', (n, s, c) => isMonotonic(wholeConsecutiveSplit(s, 3))],
+  ['CONSEC_TRIPLE_SCRAMBLED', '3 Consecutive Numbers (Scrambled)', '🔀', 'The entire number splits into three consecutive integers, but not in order.', 'CONSECUTIVE', (n, s, c) => isMonotonic(wholeConsecutiveSplit(s, 3)) === false],
+  ['CONSEC_TRIPLE_CONTAINS', '3 Consecutive Numbers (Contains)', '🔗', 'Contains three adjacent consecutive integers.', 'CONSECUTIVE', (n, s, c) => consecutiveRunInside(s, 3)],
+  ['CONSEC_PAIR_EXACT', '2 Consecutive Numbers', '🔗', 'The entire number splits into two consecutive integers.', 'CONSECUTIVE', (n, s, c) => wholeConsecutiveSplit(s, 2) !== null],
+  ['CONSEC_PAIR_ADJACENT', '2 Consecutive Numbers (Contains)', '🔗', 'Contains two adjacent substrings that are consecutive integers.', 'CONSECUTIVE', (n, s, c) => consecutivePairInside(s)],
+  ['CONSEC_PAIR_NEARBY', '2 Consecutive Numbers (Nearby)', '🔗', 'Contains two non-adjacent substrings that are consecutive integers.', 'CONSECUTIVE', (n, s, c) => consecutivePairApart(s)],
+  ['ARITHMETIC', 'Metronome', '🎼', 'Splits into three or more numbers with a constant difference.', 'PROGRESSION', (n, s, c) => hasProgressionSplit(s, isArithmetic)],
+  ['GEOMETRIC', 'Crescendo', '🔊', 'Splits into three or more numbers with a constant ratio.', 'PROGRESSION', (n, s, c) => hasProgressionSplit(s, isGeometric)],
 ];
 
 export const BADGES = RAW.map(([id, name, icon, desc, family, test]) => ({ id, name, icon, desc, family, test, count: 0, ep: 0, rarity: 'common' }));
@@ -224,28 +449,26 @@ export function badgeEp(count) {
   return Math.round((100 * TOTAL) / Math.max(count, 1));
 }
 
-export const BADGE_RARITIES = [
-  ['mythic', 1e-5], ['anomaly', 1e-4], ['epic', 1e-3], ['rare', 1e-2], ['uncommon', 1e-1], ['common', Infinity],
-];
+// RNGdle colours a badge by its EP.
+export const BADGE_RARITIES = [['mythic', 1e7], ['anomaly', 1e6], ['epic', 1e5], ['rare', 1e4], ['uncommon', 1e3], ['common', -Infinity]];
 
-export function badgeRarity(count) {
-  const p = count / TOTAL;
-  return BADGE_RARITIES.find(([, lim]) => p < lim)[0];
+export function badgeRarity(ep) {
+  return BADGE_RARITIES.find(([, min]) => ep >= min)[0];
 }
 
 export function applyCounts(counts) {
   for (const b of BADGES) {
     b.count = counts[b.id] ?? 0;
     b.ep = badgeEp(b.count);
-    b.rarity = badgeRarity(b.count);
+    b.rarity = badgeRarity(b.ep);
   }
 }
 
 export function matchIds(n) {
-  const c = context(n);
-  const out = [];
-  for (const b of BADGES) if (b.test(c)) out.push(b);
-  return out;
+  const s = String(n);
+  const c = new Array(10).fill(0);
+  for (const ch of s) c[ch]++;
+  return BADGES.filter((b) => b.test(n, s, c));
 }
 
 export function analyze(n) {

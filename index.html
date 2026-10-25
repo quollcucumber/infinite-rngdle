@@ -6,7 +6,7 @@
   <title>Infinite RNGdle</title>
   <meta name="description" content="RNGdle with no daily limit. Roll a number from 0 to 1,000,000 as many times as you like and collect badges." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>" />
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
   <header class="top">
@@ -63,7 +63,7 @@
       </div>
       <div class="tab hidden" id="tab-about">
         <p>Every roll picks a uniformly random whole number from 0 to 1,000,000 using your browser's cryptographic RNG. Your number is scanned for patterns and each badge it matches is worth <b>EP</b> (entropy points).</p>
-        <p>A badge's EP comes from how many of the 1,000,001 possible numbers earn it: <code>EP = 100 × 1,000,001 ÷ count</code> (the same scale as RNGdle), so a badge half of all numbers get is worth 200 EP and a one-in-a-million badge is worth 100,000,100 EP. Badges in the same family (e.g. Prime → Twin Prime) only score their best member; the others are shown struck through.</p>
+        <p>A badge's EP comes from how many of the 1,000,001 possible numbers earn it: <code>EP = 100 × 1,000,001 ÷ count</code> (the same scale as RNGdle), so a badge half of all numbers get is worth 200 EP and a one-in-a-million badge is worth 100,000,100 EP. The badges are RNGdle's own 233, so any number scores the same here as there. Badges in the same family (e.g. Pair → Two Pair) only score their best member; the others are shown struck through.</p>
         <p>Your roll's rarity compares its total EP against every possible number:</p>
         <ul class="tierlist" id="tierList"></ul>
         <p>Everything is stored locally in this browser. <button id="reset" class="ghost small danger">Reset all stats</button></p>
@@ -72,6 +72,6 @@
   </main>
   <footer>Inspired by <a href="https://www.rngdle.com/" target="_blank" rel="noopener">RNGdle</a>. Unofficial, unlimited fan version.</footer>
   <div id="fx"></div>
-  <script type="module" src="js/app.js?v=5"></script>
+  <script type="module" src="js/app.js?v=6"></script>
 </body>
 </html>
