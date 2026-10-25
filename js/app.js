@@ -1,5 +1,5 @@
-import { BADGES, MAX, TOTAL, analyze, applyCounts } from './badges.js?v=4';
-import { BADGE_COUNTS, EP_HISTOGRAM } from './calibration.js?v=4';
+import { BADGES, MAX, TOTAL, analyze, applyCounts } from './badges.js?v=5';
+import { BADGE_COUNTS, EP_HISTOGRAM } from './calibration.js?v=5';
 
 applyCounts(BADGE_COUNTS);
 
@@ -24,15 +24,11 @@ for (let i = EP_HISTOGRAM.length - 1, acc = 0; i >= 0; i--) { acc += EP_HISTOGRA
 function standing(ep) {
   let lo = 0, hi = EP_HISTOGRAM.length - 1;
   while (lo < hi) { const mid = (lo + hi) >> 1; if (EP_HISTOGRAM[mid][0] < ep) lo = mid + 1; else hi = mid; }
+  // Same rule as rngdle.com: percentile = share of numbers scoring strictly less.
   const top = atLeast[lo] / TOTAL;
-  const bottom = 1 - (lo + 1 < atLeast.length ? atLeast[lo + 1] : 0) / TOTAL;
-  let tier = 'common';
-  if (top <= 0.01) tier = 'mythic';
-  else if (top <= 0.05) tier = 'anomaly';
-  else if (top <= 0.1) tier = 'epic';
-  else if (top <= 0.25) tier = 'rare';
-  else if (top <= 0.5) tier = 'uncommon';
-  else if (bottom <= 0.01) tier = 'trash';
+  const bottom = 1 - top;
+  const p = bottom * 100;
+  const tier = p < 1 ? 'trash' : p < 50 ? 'common' : p < 75 ? 'uncommon' : p < 90 ? 'rare' : p < 95 ? 'epic' : p < 99 ? 'anomaly' : 'mythic';
   return { tier, top, bottom };
 }
 
@@ -74,6 +70,7 @@ function pct(f) {
   if (p >= 0.01) return `${p.toFixed(2)}%`;
   return `${Number(p.toPrecision(2))}%`;
 }
+const rankText = (r) => (r.bottom >= 0.5 ? `Top ${pct(r.top)}` : r.bottom === 0 ? 'Bottom <0.01%' : `Bottom ${pct(r.bottom)}`);
 const odds = (count) => (count >= TOTAL / 2 ? `${pct(count / TOTAL)} of rolls` : `1 in ${fmt(Math.round(TOTAL / count))}`);
 
 let current = null;
@@ -130,7 +127,7 @@ function renderVerdict(r, label, animate) {
   $('verdict').className = `verdict r-${r.tier}`;
   $('tier').className = `tier ${r.tier}`;
   $('tier').textContent = tier.name;
-  const rank = r.tier === 'trash' ? `Bottom ${pct(r.bottom)}` : `Top ${pct(r.top)}`;
+  const rank = rankText(r);
   $('sub').textContent = `${label} · ${rank} of all possible rolls`;
   countUp($('ep'), r.total, animate ? (state.fast ? 250 : 700) : 0);
 }
@@ -253,7 +250,7 @@ function shareText() {
   const top = r.badges.filter((x) => x.counted).slice(0, 5).map(({ badge }) => `${badge.icon} ${badge.name}`).join('\n');
   const link = `${location.origin}${location.pathname}?n=${r.n}`;
   const title = label.startsWith('Roll #') ? `Infinite RNGdle ${label.replace(' (replay)', '')}` : 'Infinite RNGdle';
-  return `${title}\n🎲 ${fmt(r.n)} — ${tier.icon} ${tier.name} (${r.tier === 'trash' ? 'Bottom' : 'Top'} ${pct(r.tier === 'trash' ? r.bottom : r.top)})\n${fmt(r.total)} EP · ${r.badges.length} badges\n${top}\n${link}`;
+  return `${title}\n🎲 ${fmt(r.n)} — ${tier.icon} ${tier.name} (${rankText(r)})\n${fmt(r.total)} EP · ${r.badges.length} badges\n${top}\n${link}`;
 }
 
 let autoTimer = null;
