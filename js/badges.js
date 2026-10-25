@@ -221,7 +221,7 @@ export const BADGES = RAW.map(([id, name, icon, desc, family, test]) => ({ id, n
 export const BADGE_BY_ID = Object.fromEntries(BADGES.map((b) => [b.id, b]));
 
 export function badgeEp(count) {
-  return Math.max(1, Math.round(10 * Math.pow(TOTAL / Math.max(count, 1), 0.3)));
+  return Math.round((100 * TOTAL) / Math.max(count, 1));
 }
 
 export const BADGE_RARITIES = [

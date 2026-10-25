@@ -48,10 +48,19 @@ function randomRoll() {
   return buf[0] % TOTAL;
 }
 
-const STORE_KEY = 'infinite-rngdle-v1';
+const STORE_KEY = 'infinite-rngdle-v2';
+const OLD_STORE_KEY = 'infinite-rngdle-v1';
 const fresh = () => ({ rolls: 0, lifetimeEp: 0, found: {}, tiers: {}, history: [], best: [], fast: false });
 let state = fresh();
-try { state = { ...fresh(), ...JSON.parse(localStorage.getItem(STORE_KEY) || '{}') }; } catch { /* corrupt storage: start fresh */ }
+try {
+  const saved = localStorage.getItem(STORE_KEY);
+  if (saved) state = { ...fresh(), ...JSON.parse(saved) };
+  else {
+    // v1 used a different EP scale; keep only the badge collection and settings.
+    const old = JSON.parse(localStorage.getItem(OLD_STORE_KEY) || '{}');
+    state = { ...fresh(), found: old.found || {}, fast: !!old.fast };
+  }
+} catch { /* corrupt storage: start fresh */ }
 const save = () => localStorage.setItem(STORE_KEY, JSON.stringify(state));
 
 const $ = (id) => document.getElementById(id);
