@@ -9,3 +9,5 @@ An unlimited, unofficial take on [RNGdle](https://www.rngdle.com/): roll a rando
 npm run calibrate   # regenerate js/calibration.js after changing badges
 npm start           # serve on http://localhost:8080
 ```
+
+When deploying changes, bump the `?v=` tags in `index.html` and the imports in `js/app.js` so browsers don't keep the old cached files (GitHub Pages caches for 10 minutes).

@@ -1,5 +1,5 @@
-import { BADGES, MAX, TOTAL, analyze, applyCounts } from './badges.js';
-import { BADGE_COUNTS, EP_HISTOGRAM } from './calibration.js';
+import { BADGES, MAX, TOTAL, analyze, applyCounts } from './badges.js?v=3';
+import { BADGE_COUNTS, EP_HISTOGRAM } from './calibration.js?v=3';
 
 applyCounts(BADGE_COUNTS);
 
